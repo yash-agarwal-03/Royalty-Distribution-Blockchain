@@ -6,7 +6,7 @@ import ProtectedRoute from '../components/ProtectedRoute'; // Import the guard
 import LandingPage from '../pages/LandingPage';
 import AdminDashboard from '../pages/AdminDashboard';
 import ContributorDashboard from '../pages/ContributorDashboard'; 
-import UserMarketplace from '../pages/UserMarketplace';
+import UserMarketplace from '../pages/UserMarketPlace';
 
 const AppRouter = () => {
   return (
