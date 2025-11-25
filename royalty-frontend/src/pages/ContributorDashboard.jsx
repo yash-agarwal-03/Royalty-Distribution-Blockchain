@@ -28,7 +28,7 @@ const ContributorDashboard = () => {
     const logout = context ? context.logout : () => navigate('/');
 
     useEffect(() => {
-        document.body.style.backgroundImage = "url('/image.png')";
+        document.body.style.backgroundImage = "url('/bg-contributor.png')";
         document.body.style.backgroundSize = "cover";
         document.body.style.backgroundAttachment = "fixed";
         document.body.style.backgroundPosition = "center";

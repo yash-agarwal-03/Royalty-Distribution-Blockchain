@@ -16,7 +16,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     // In React/Vite, files in 'public' are accessed from root '/'.
     // Ensure 'image2.png' is actually inside the 'public' folder of your project.
-    document.body.style.backgroundImage = "url('/image2.png')";
+    document.body.style.backgroundImage = "url('/bg-admin.png')";
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.backgroundPosition = "center";
