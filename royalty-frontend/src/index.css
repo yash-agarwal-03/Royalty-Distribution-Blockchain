@@ -1,0 +1,158 @@
+/* Import Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+
+:root {
+  /* --- GLASS VARIABLES (For Admin Dashboard) --- */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(20px);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --accent-yellow: #ffe66d;
+  --accent-green: #4ecdc4;
+  --btn-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* --- LANDING PAGE VARIABLES --- */
+  --neon-pink: #ff0055;
+  --landing-bg: #050511;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #050511; /* Default Dark Color only, NO IMAGE HERE */
+  font-family: 'Outfit', sans-serif;
+  color: white;
+}
+
+/* ========================
+   ADMIN DASHBOARD STYLES (Restored)
+   ======================== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 25px 35px;
+}
+
+.glass-body {
+  padding: 35px;
+}
+
+/* Inputs */
+.form-control, .form-select, .input-group-text {
+  background: rgba(0, 0, 0, 0.4) !important; /* Darker for better visibility */
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  padding: 15px 20px !important;
+}
+
+.form-control:focus {
+  border-color: var(--accent-green) !important;
+  box-shadow: 0 0 15px rgba(78, 205, 196, 0.2) !important;
+}
+
+.input-group-text {
+  border-right: none !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Custom File Upload */
+.custom-file-upload {
+    border: 2px dashed var(--glass-border);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+.custom-file-upload:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent-green);
+}
+
+.btn-glass-primary {
+  background: var(--btn-gradient);
+  border: none;
+  color: white;
+  padding: 15px 30px;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* ========================
+   LANDING PAGE STYLES (Fixed Visibility)
+   ======================== */
+.landing-container {
+    /* The "Runstar Beats" Gradient */
+    background: radial-gradient(circle at 50% 0%, #b91d73 0%, #2c0e38 40%, #050511 80%);
+    min-height: 100vh;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10; /* Covers the default body bg */
+}
+
+.landing-title {
+    font-size: 5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 0.9;
+    margin-bottom: 20px;
+    text-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    background: linear-gradient(to bottom, #ffffff, #ffccdd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.landing-subtitle {
+    font-size: 1.25rem;
+    color: #e0e0e0; /* High contrast gray-white */
+    font-weight: 400;
+    max-width: 600px;
+    margin: 0 auto 40px auto;
+}
+
+.btn-landing-pink {
+    background: transparent;
+    border: 2px solid var(--neon-pink);
+    color: #fff;
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+    transition: 0.3s;
+}
+.btn-landing-pink:hover {
+    background: var(--neon-pink);
+    box-shadow: 0 0 30px rgba(255, 0, 85, 0.8);
+    transform: translateY(-2px);
+    color: white;
+}
+
+/* Modal Styling */
+.modal-glass-content {
+    background: rgba(20, 20, 20, 0.95) !important; /* Darker for readability */
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+}
