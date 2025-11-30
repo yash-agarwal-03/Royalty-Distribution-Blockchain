@@ -8,6 +8,7 @@ const LandingPage = () => {
   const { connectWallet, login, userRole, isLoading } = useContext(WalletContext);
   const navigate = useNavigate();
 
+  // 1. SET BACKGROUND
   useEffect(() => {
     document.body.style.backgroundImage = "url('https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=2070&auto=format&fit=crop')";
     document.body.style.backgroundSize = "cover";
@@ -16,14 +17,16 @@ const LandingPage = () => {
     return () => { document.body.style.backgroundImage = ""; };
   }, []);
 
+  // 2. REDIRECT IF ALREADY LOGGED IN
   useEffect(() => {
     if (!isLoading && userRole) {
         if (userRole === 'Admin') navigate('/admin');
-        else if (['Artist', 'Producer'].includes(userRole)) navigate('/dashboard');
+        else if (userRole === 'Contributor') navigate('/dashboard'); // Merged Role
         else navigate('/browse');
     }
   }, [userRole, isLoading, navigate]);
 
+  // --- STATE ---
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   
@@ -33,6 +36,7 @@ const LandingPage = () => {
   const [pendingWallet, setPendingWallet] = useState(null); 
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // --- LOADING GUARD ---
   if (isLoading) {
       return (
           <div className="d-flex flex-column justify-content-center align-items-center vh-100 bg-black text-white">
@@ -49,11 +53,10 @@ const LandingPage = () => {
   };
 
   // --- LOGIC: CANCEL LOGIN ---
-  // Resets all states so user can try again
   const handleCancelLogin = () => {
       setShowConfirmModal(false);
       setPendingWallet(null);
-      setIsProcessing(false); // Important: Release the "Processing" lock
+      setIsProcessing(false); 
   };
 
   // --- STEP 1: INITIATE LOGIN ---
@@ -81,8 +84,6 @@ const LandingPage = () => {
             setPendingWallet(walletAddress);
             setShowRoleModal(false); 
             setShowConfirmModal(true); 
-            // Note: We keep isProcessing = true here so the UI doesn't flicker 
-            // until they either Confirm or Cancel
         } else {
              setIsProcessing(false);
         }
@@ -162,13 +163,13 @@ const LandingPage = () => {
                 <Col md={6} className="border-end border-secondary pe-4">
                     <p className="text-white-50 mb-3">Select your role:</p>
                     <RoleItem role="User" label="Listener" icon={<FiHeadphones />} />
-                    <RoleItem role="Artist" label="Artist" icon={<FiMic />} />
-                    <RoleItem role="Producer" label="Producer" icon={<FiMusic />} />
+                    {/* MERGED CONTRIBUTOR ROLE */}
+                    <RoleItem role="Contributor" label="Creator (Artist/Producer)" icon={<FiMic />} />
                     <RoleItem role="Admin" label="Administrator" icon={<FiKey />} />
                 </Col>
                 <Col md={6} className="ps-4 d-flex flex-column justify-content-center">
                     <div className="text-center mb-4">
-                        <h4 className="fw-bold text-white mb-3">{selectedRole} Login</h4>
+                        <h4 className="fw-bold text-white mb-3">{selectedRole === 'Contributor' ? 'Creator' : selectedRole} Login</h4>
                         <p className="text-white-50 small">{selectedRole === 'Admin' ? 'Enter secure credentials.' : 'Connect your wallet to continue.'}</p>
                     </div>
                     {selectedRole === 'Admin' && (
@@ -185,10 +186,10 @@ const LandingPage = () => {
         </Modal.Body>
       </Modal>
 
-      {/* MODAL 2: Wallet Confirmation (The "Handshake") */}
+      {/* MODAL 2: Wallet Confirmation */}
       <Modal 
         show={showConfirmModal} 
-        onHide={handleCancelLogin} // HANDLES CLICK OUTSIDE/ESC
+        onHide={handleCancelLogin} 
         centered 
         contentClassName="modal-glass-content"
       >

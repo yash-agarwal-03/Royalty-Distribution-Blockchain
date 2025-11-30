@@ -29,7 +29,7 @@ const AppRouter = () => {
         <Route 
           path="/dashboard" 
           element={
-            <ProtectedRoute allowedRoles={['Artist', 'Producer']}>
+            <ProtectedRoute allowedRoles={['Contributor']}>
               <ContributorDashboard />
             </ProtectedRoute>
           } 

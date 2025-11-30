@@ -2,10 +2,10 @@ import React, { useState, useContext, useEffect, useRef } from 'react';
 import { Container, Row, Col, Button, Modal, Spinner } from 'react-bootstrap';
 import { FiPlay, FiPause, FiLock, FiLogOut, FiMusic, FiShoppingBag, FiAlertCircle, FiCheck, FiX, FiDisc, FiSkipBack, FiSkipForward } from 'react-icons/fi';
 import { ethers } from 'ethers';
-import { WalletContext } from '../context/WalletContext.jsx';
-import useContract from '../hooks/useContract.js'; 
+import { WalletContext } from '../context/WalletContext';
+import useContract from '../hooks/useContract'; 
 
-// Royalty-free sample for demo player functionality
+// Royalty-free sample for demo player functionality (Fallback)
 const DEMO_AUDIO = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; 
 
 const UserMarketplace = () => {
@@ -24,8 +24,8 @@ const UserMarketplace = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
 
-    // Audio Player Ref
-    const audioRef = useRef(new Audio(DEMO_AUDIO));
+    // Audio Player Ref - Initialized without source
+    const audioRef = useRef(new Audio());
 
     useEffect(() => {
         const initData = async () => {
@@ -38,7 +38,7 @@ const UserMarketplace = () => {
                     setUserBalance(parseFloat(balanceEth).toFixed(4));
                 } catch (err) { console.error("Balance fetch failed", err); }
 
-                // 2. Fetch Real Songs from Contract
+                // 2. Fetch Real Songs from Contract & IPFS
                 if (contract) {
                     try {
                         const rawSongs = await contract.getAllSongs();
@@ -47,10 +47,30 @@ const UserMarketplace = () => {
                         const formattedSongs = await Promise.all(rawSongs.map(async (song) => {
                             const isUnlocked = await contract.hasUnlocked(currentAccount, song.id);
                             
-                            // LOGIC: Use IPFS if real, otherwise null (triggers Placeholder Icon)
                             let coverImage = null;
+                            let audioUrl = null; 
+
+                            // --- IPFS FETCH LOGIC ---
                             if (song.ipfsMetadataCID && song.ipfsMetadataCID.length > 5 && !song.ipfsMetadataCID.startsWith("QmTest")) {
-                                coverImage = null; // Defaulting to placeholder as requested
+                                try {
+                                    // 1. Construct Metadata URL (Using Pinata Gateway)
+                                    // If the CID is just the hash "Qm...", prepent gateway
+                                    // If it's already a URL, use it as is
+                                    const metadataUrl = song.ipfsMetadataCID.startsWith("http") 
+                                        ? song.ipfsMetadataCID 
+                                        : `https://gateway.pinata.cloud/ipfs/${song.ipfsMetadataCID}`;
+
+                                    const response = await fetch(metadataUrl);
+                                    const metadata = await response.json();
+
+                                    // 2. Extract Assets
+                                    coverImage = metadata.image; 
+                                    // Ensure audio URL is usable
+                                    audioUrl = metadata.animation_url;
+
+                                } catch (ipfsError) {
+                                    console.warn(`Failed to fetch metadata for song ${song.id}:`, ipfsError);
+                                }
                             }
 
                             return {
@@ -59,6 +79,7 @@ const UserMarketplace = () => {
                                 artist: song.artistName,
                                 price: ethers.formatEther(song.price),
                                 cover: coverImage, 
+                                audio: audioUrl, // Store the real audio link
                                 unlocked: isUnlocked
                             };
                         }));
@@ -102,9 +123,19 @@ const UserMarketplace = () => {
         };
     }, []);
 
-    // --- PLAY/PAUSE LOGIC ---
+    // --- PLAY/PAUSE LOGIC (Updated for Dynamic Source) ---
     useEffect(() => {
         if (playingSong) {
+            // Check if source changed or just resuming
+            // If playingSong.audio exists, use it. Otherwise fallback to DEMO
+            const songUrl = playingSong.audio || DEMO_AUDIO;
+            
+            // Only change source if it's different to prevent reloading on every render
+            if (audioRef.current.src !== songUrl) {
+                audioRef.current.src = songUrl;
+                audioRef.current.load(); // Load new source
+            }
+            
             audioRef.current.play().catch(e => console.error("Audio Play Error:", e));
         } else {
             audioRef.current.pause();
@@ -122,7 +153,6 @@ const UserMarketplace = () => {
     // --- SEEK LOGIC (Scrubbing) ---
     const handleSeek = (e) => {
         const newTime = parseFloat(e.target.value);
-        // Immediate jump
         audioRef.current.currentTime = newTime;
         setCurrentTime(newTime);
     };
