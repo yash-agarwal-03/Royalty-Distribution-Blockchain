@@ -3,15 +3,16 @@ import { ethers } from 'ethers';
 
 export const WalletContext = createContext();
 
-const HARDHAT_NETWORK_ID = '0x7a69'; // 31337
-const HARDHAT_RPC_URL = 'http://127.0.0.1:8545';
+// CHANGED: Target Sepolia instead of Localhost
+const SEPOLIA_NETWORK_ID = '0xaa36a7'; // 11155111 (Hex)
+const SEPOLIA_RPC_URL = 'https://rpc.sepolia.org'; // Public RPC for MetaMask configuration
 
 export const WalletProvider = ({ children }) => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [userRole, setUserRole] = useState(null); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. ROBUST SESSION RESTORATION
+  // 1. ROBUST SESSION RESTORATION (UNTOUCHED)
   useEffect(() => {
     const checkSession = async () => {
       setIsLoading(true);
@@ -49,7 +50,7 @@ export const WalletProvider = ({ children }) => {
     checkSession();
   }, []);
 
-  // 2. LISTEN FOR ACCOUNT CHANGES (Fixes the UX Issue)
+  // 2. LISTEN FOR ACCOUNT CHANGES (UNTOUCHED)
   useEffect(() => {
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', () => {
@@ -63,7 +64,7 @@ export const WalletProvider = ({ children }) => {
     }
   }, []);
 
-  // 3. CONNECT WALLET (Strict Mode)
+  // 3. CONNECT WALLET (UPDATED FOR SEPOLIA)
   const connectWallet = async (force = false) => {
     if (!window.ethereum) {
       alert("Please install Rabby or MetaMask!");
@@ -88,27 +89,29 @@ export const WalletProvider = ({ children }) => {
       if (accounts.length === 0) return null;
       const address = accounts[0];
 
-      // Switch to Hardhat Local
+      // CHANGED: Switch to Sepolia Testnet
       try {
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: HARDHAT_NETWORK_ID }],
+          params: [{ chainId: SEPOLIA_NETWORK_ID }],
         });
       } catch (switchError) {
+        // This error code 4902 means the chain has not been added to MetaMask.
         if (switchError.code === 4902) {
           try {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [
                 {
-                  chainId: HARDHAT_NETWORK_ID,
-                  chainName: 'Hardhat Local',
-                  rpcUrls: [HARDHAT_RPC_URL],
-                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
+                  chainId: SEPOLIA_NETWORK_ID,
+                  chainName: 'Sepolia Testnet',
+                  rpcUrls: [SEPOLIA_RPC_URL],
+                  nativeCurrency: { name: 'SepoliaETH', symbol: 'ETH', decimals: 18 },
+                  blockExplorerUrls: ['https://sepolia.etherscan.io/']
                 },
               ],
             });
-          } catch (addError) { console.error("Failed to add network", addError); }
+          } catch (addError) { console.error("Failed to add Sepolia network", addError); }
         }
       }
 

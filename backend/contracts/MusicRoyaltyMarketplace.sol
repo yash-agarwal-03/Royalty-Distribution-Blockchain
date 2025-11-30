@@ -87,7 +87,7 @@ contract MusicRoyaltyMarketplace is Ownable, ReentrancyGuard {
         require(msg.value >= song.price, "Insufficient ETH sent");
         require(!hasUnlocked[msg.sender][_songId], "You already own this song");
 
-        // --- 1. Calculate Platform Fee (10%) ---
+        // --- 1. Calculate Platform Fee (5%) ---
         uint256 platformFee = (msg.value * 5) / 100;
         uint256 remainder = msg.value - platformFee;
 

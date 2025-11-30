@@ -7,10 +7,11 @@ import LandingPage from '../pages/LandingPage';
 import AdminDashboard from '../pages/AdminDashboard';
 import ContributorDashboard from '../pages/ContributorDashboard'; 
 import UserMarketplace from '../pages/UserMarketPlace';
-
+import NetworkBanner from '../components/NetworkBanner';
 const AppRouter = () => {
   return (
     <Router>
+      <NetworkBanner/>
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<LandingPage />} />

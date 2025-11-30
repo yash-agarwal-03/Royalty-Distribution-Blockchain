@@ -6,7 +6,7 @@ import { WalletContext } from '../context/WalletContext';
 import useContract from '../hooks/useContract';
 import { ethers } from 'ethers';
 import { uploadFileToIPFS, uploadMetadataToIPFS } from '../api/ipfs';
-
+import { platformFeePercentage } from '../utils/constants';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   
@@ -29,7 +29,6 @@ const AdminDashboard = () => {
     title: '', artistName: '', artistWallet: '', producerName: '', producerWallet: '', price: '', royaltySplit: 70,
   });
 
-  const platformFeePercentage = 0.10;
 
   useEffect(() => {
     document.body.style.backgroundImage = "url('/bg-admin.png')";

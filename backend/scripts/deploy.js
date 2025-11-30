@@ -1,28 +1,33 @@
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  // 1. Get the account that will sign the transaction (your Private Key wallet)
+  const [deployer] = await hre.ethers.getSigners();
 
   console.log("----------------------------------------------------");
-  console.log("🚀 Starting Local Deployment...");
+  console.log(`🚀 Deploying to network: ${hre.network.name}`);
+  console.log(`👤 Deploying with account: ${deployer.address}`);
   console.log("----------------------------------------------------");
 
-  // 1. Get the Contract Factory
+  // 2. Get the Contract Factory
   const MusicRoyaltyMarketplace = await hre.ethers.getContractFactory("MusicRoyaltyMarketplace");
 
-  // 2. Deploy the Contract
+  // 3. Deploy the Contract
+  // Your constructor takes NO arguments, so we leave .deploy() empty
   const contract = await MusicRoyaltyMarketplace.deploy();
 
-  // 3. Wait for deployment to finish
+  console.log("⏳ Waiting for transaction confirmation...");
+
+  // 4. Wait for deployment to finish
   await contract.waitForDeployment();
 
   const address = await contract.getAddress();
 
+  console.log("----------------------------------------------------");
   console.log("✅ Deployment Successful!");
   console.log(`📍 Contract Address: ${address}`);
   console.log("----------------------------------------------------");
-  console.log("⚠️  Keep this terminal running if you used 'npx hardhat node'!");
+  console.log("👉 ACTION REQUIRED: Copy the address above and paste it into src/utils/constants.js");
 }
 
 main().catch((error) => {
