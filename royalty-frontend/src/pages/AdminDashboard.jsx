@@ -1,26 +1,24 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, InputGroup } from 'react-bootstrap';
-import { FiUploadCloud, FiMusic, FiDollarSign, FiUser, FiLogOut, FiImage, FiHeadphones, FiTarget } from 'react-icons/fi';
+import { FiUploadCloud, FiMusic, FiDollarSign, FiUser, FiLogOut, FiTarget, FiImage,FiHeadphones, FiAlertTriangle } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { WalletContext } from '../context/WalletContext';
+import useContract from '../hooks/useContract';
+import { ethers } from 'ethers';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   
-  // 1. SAFE CONTEXT ACCESS
-  // We handle the case where context might be undefined to prevent white/black screen crashes
   const context = useContext(WalletContext);
-  const logout = context ? context.logout : () => navigate('/'); 
+  const { currentAccount, connectWallet, logout } = context;
 
-  // 2. BACKGROUND IMAGE FIX
+  const contract = useContract();
+
   useEffect(() => {
-    // In React/Vite, files in 'public' are accessed from root '/'.
-    // Ensure 'image2.png' is actually inside the 'public' folder of your project.
     document.body.style.backgroundImage = "url('/bg-admin.png')";
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.backgroundPosition = "center";
-    
     return () => { document.body.style.backgroundImage = ""; };
   }, []);
 
@@ -30,6 +28,8 @@ const AdminDashboard = () => {
     title: '', artistName: '', artistWallet: '', producerName: '', producerWallet: '', price: '', royaltySplit: 70,
   });
 
+  const platformFeePercentage = 0.10;
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleFileSelect = (e, type) => {
@@ -37,28 +37,83 @@ const AdminDashboard = () => {
     if (file) setFileNames({ ...fileNames, [type]: file.name });
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
-    console.log("Submitting Data:", formData);
-    setTimeout(() => { alert(`Simulation Success!`); setLoading(false); }, 1500);
+
+    try {
+        // Force connection if missing
+        let activeAccount = currentAccount;
+        if (!activeAccount) {
+            activeAccount = await connectWallet(true); // Force Popup
+            if (!activeAccount) {
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (!contract) throw new Error("Contract connection failed. Please refresh.");
+
+        if (!ethers.isAddress(formData.artistWallet) || !ethers.isAddress(formData.producerWallet)) {
+            throw new Error("Invalid Ethereum Address.");
+        }
+
+        const priceInWei = ethers.parseEther(formData.price.toString());
+        const split = parseInt(formData.royaltySplit);
+
+        console.log("Registering Song...", { title: formData.title, price: priceInWei.toString() });
+
+        const tx = await contract.registerSong(
+            formData.title,
+            formData.artistName,
+            "QmTestMetadataHash", 
+            formData.artistWallet,
+            formData.producerWallet,
+            split, 
+            priceInWei
+        );
+
+        console.log("Transaction Hash:", tx.hash);
+        await tx.wait();
+
+        alert("✅ Song Registered Successfully!");
+        setFormData({ ...formData, title: '' });
+
+    } catch (error) {
+        console.error("Registration Error:", error);
+        let msg = error.reason || error.message || "Unknown Error";
+        if (msg.includes("estimateGas") || msg.includes("missing revert data")) {
+            msg = "Transaction Rejected. Are you the Admin (Account #0)?";
+        }
+        alert(`Failed: ${msg}`);
+    } finally {
+        setLoading(false);
+    }
   };
 
+  const getPrice = () => parseFloat(formData.price) || 0;
+  const getPlatformFee = () => (getPrice() * platformFeePercentage).toFixed(4);
   const calculateShare = (percentage) => {
-    if (!formData.price) return "0.00";
-    return (parseFloat(formData.price) * (percentage / 100)).toFixed(4);
+    const price = getPrice();
+    const remainder = price - (price * platformFeePercentage);
+    return (remainder * (percentage / 100)).toFixed(4);
   };
 
   return (
     <div className="page-content" style={{ paddingTop: '60px', paddingBottom: '80px' }}>
       <Container>
-        {/* Header */}
         <Row className="justify-content-center mb-5">
           <Col lg={10}>
             <div className="d-flex justify-content-between align-items-end px-2">
               <div>
                 <h4 className="text-secondary mb-2" style={{ letterSpacing: '1px', fontWeight: '600' }}>ADMIN PORTAL</h4>
                 <h1 className="fw-bold text-white display-5" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Song Registration</h1>
+                <p className="text-white-50 font-monospace mb-0" style={{fontSize: '0.9rem'}}>
+                    <FiUser className="me-2"/> Connected: {currentAccount ? 
+                        <span className="text-success">{currentAccount.substring(0,6)}...{currentAccount.substring(38)}</span> : 
+                        <span className="text-danger cursor-pointer" onClick={() => connectWallet(true)} style={{cursor: 'pointer', textDecoration: 'underline'}}>Not Connected (Click to Connect)</span>
+                    }
+                </p>
               </div>
               <Button variant="outline-light" size="sm" className="rounded-pill px-4" onClick={logout}>
                 <FiLogOut className="me-2" /> Logout
@@ -67,7 +122,7 @@ const AdminDashboard = () => {
           </Col>
         </Row>
 
-        {/* Form Card */}
+        {/* Rest of the Form Layout remains exactly the same */}
         <Row className="justify-content-center">
           <Col lg={10}>
             <div className="glass-card shadow-lg">
@@ -75,10 +130,8 @@ const AdminDashboard = () => {
                 <h4 className="mb-1 fw-bold text-white">Upload New Track</h4>
                 <p className="text-secondary mb-0" style={{ opacity: 0.9 }}>Enter metadata, upload media, and distribute shares.</p>
               </div>
-              
               <div className="glass-body px-4 px-md-5 py-5">
                 <Form onSubmit={handleRegister}>
-                  {/* Row 1: Title & Price */}
                   <Row className="mb-4 g-4">
                     <Col md={7}>
                       <Form.Group>
@@ -99,8 +152,6 @@ const AdminDashboard = () => {
                       </Form.Group>
                     </Col>
                   </Row>
-
-                  {/* Row 2: Artist Info */}
                   <Row className="mb-4 g-4">
                     <Col md={5}>
                       <Form.Group>
@@ -118,8 +169,6 @@ const AdminDashboard = () => {
                       </Form.Group>
                     </Col>
                   </Row>
-
-                  {/* Row 3: Producer Info */}
                   <Row className="mb-5 g-4">
                     <Col md={5}>
                       <Form.Group>
@@ -137,56 +186,38 @@ const AdminDashboard = () => {
                       </Form.Group>
                     </Col>
                   </Row>
-
-                  {/* Royalty Slider Section */}
                   <div className="p-4 rounded-4 mb-5 shadow-lg" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--glass-border)' }}>
                      <Row className="align-items-center g-4">
+                        <Col md={12} className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center p-2 rounded" style={{background: 'rgba(255,255,255,0.05)'}}>
+                                <span className="text-white-50 small text-uppercase fw-bold ls-1">Platform Fee ({(platformFeePercentage * 100)}%)</span>
+                                <span className="text-white fw-bold">{getPlatformFee()} ETH</span>
+                            </div>
+                        </Col>
                         <Col md={7}>
-                            <Form.Label className="h5 mb-4 d-block text-white fw-bold">Royalty Distribution</Form.Label>
+                            <Form.Label className="h5 mb-4 d-block text-white fw-bold">Royalty Distribution (Remaining {(1 - platformFeePercentage) * 100}%)</Form.Label>
                             <Form.Range min={0} max={100} step={5} value={formData.royaltySplit} onChange={(e) => setFormData({...formData, royaltySplit: e.target.value})} style={{ height: '30px', cursor: 'pointer' }} />
                             <div className="d-flex justify-content-between text-white small mt-2 fw-bold" style={{ opacity: 0.8 }}><span>0%</span><span>50%</span><span>100%</span></div>
                         </Col>
                         <Col md={5}>
                             <div className="p-3 rounded-3 mb-2 d-flex justify-content-between align-items-center" style={{ background: 'rgba(255,255,255,0.1)', borderLeft: '4px solid var(--accent-yellow)' }}>
-                                <div>
-                                  <small className="text-white-50 d-block" style={{fontSize: '0.85rem'}}>{formData.artistName || "Artist"} ({formData.royaltySplit}%)</small>
-                                  <span className="text-white small font-monospace">{formData.artistWallet ? formData.artistWallet.slice(0,6)+'...'+formData.artistWallet.slice(-4) : 'No Wallet'}</span>
-                                </div>
+                                <div><small className="text-white-50 d-block" style={{fontSize: '0.85rem'}}>{formData.artistName || "Artist"} ({formData.royaltySplit}%)</small><span className="text-white small font-monospace">{formData.artistWallet ? formData.artistWallet.slice(0,6)+'...'+formData.artistWallet.slice(-4) : 'No Wallet'}</span></div>
                                 <div className="text-end"><h5 className="mb-0 text-white fw-bold">{calculateShare(formData.royaltySplit)} ETH</h5></div>
                             </div>
                             <div className="p-3 rounded-3 d-flex justify-content-between align-items-center" style={{ background: 'rgba(255,255,255,0.05)', borderLeft: '4px solid var(--accent-green)' }}>
-                                <div>
-                                  <small className="text-white-50 d-block" style={{fontSize: '0.85rem'}}>{formData.producerName || "Producer"} ({100 - formData.royaltySplit}%)</small>
-                                  <span className="text-white small font-monospace">{formData.producerWallet ? formData.producerWallet.slice(0,6)+'...'+formData.producerWallet.slice(-4) : 'No Wallet'}</span>
-                                </div>
+                                <div><small className="text-white-50 d-block" style={{fontSize: '0.85rem'}}>{formData.producerName || "Producer"} ({100 - formData.royaltySplit}%)</small><span className="text-white small font-monospace">{formData.producerWallet ? formData.producerWallet.slice(0,6)+'...'+formData.producerWallet.slice(-4) : 'No Wallet'}</span></div>
                                 <div className="text-end"><h5 className="mb-0 text-white fw-bold">{calculateShare(100 - formData.royaltySplit)} ETH</h5></div>
                             </div>
                         </Col>
                      </Row>
                   </div>
-
-                  {/* File Uploads */}
                   <Row className="mb-5 g-4">
-                    <Col md={6}>
-                      <Form.Label className="fw-bold">Cover Art</Form.Label>
-                      <label className="custom-file-upload w-100 shadow-sm">
-                        <FiImage /><span className="fw-bold mt-2 text-white">{fileNames.cover || "Choose Image"}</span>
-                        <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} required hidden />
-                      </label>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Label className="fw-bold">Audio Track</Form.Label>
-                      <label className="custom-file-upload w-100 shadow-sm">
-                        <FiHeadphones /><span className="fw-bold mt-2 text-white">{fileNames.audio || "Choose Audio"}</span>
-                        <input type="file" accept="audio/*" onChange={(e) => handleFileSelect(e, 'audio')} required hidden />
-                      </label>
-                    </Col>
+                    <Col md={6}><Form.Label className="fw-bold">Cover Art</Form.Label><label className="custom-file-upload w-100 shadow-sm"><FiImage /><span className="fw-bold mt-2 text-white">{fileNames.cover || "Choose Image"}</span><input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} required hidden /></label></Col>
+                    <Col md={6}><Form.Label className="fw-bold">Audio Track</Form.Label><label className="custom-file-upload w-100 shadow-sm"><FiHeadphones /><span className="fw-bold mt-2 text-white">{fileNames.audio || "Choose Audio"}</span><input type="file" accept="audio/*" onChange={(e) => handleFileSelect(e, 'audio')} required hidden /></label></Col>
                   </Row>
-
                   <Button type="submit" className="btn-glass-primary w-100 py-3 d-flex justify-content-center align-items-center gap-3 shadow-lg" disabled={loading} style={{fontSize: '1.2rem'}}>
-                    {loading ? 'Processing...' : <><FiUploadCloud size={28} /> Register Song On-Chain</>}
+                    {loading ? 'Processing...' : <><FiUploadCloud size={28} className="me-2"/> Register Song On-Chain</>}
                   </Button>
-
                 </Form>
               </div>
             </div>

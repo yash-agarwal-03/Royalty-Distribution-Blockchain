@@ -3,91 +3,127 @@ import { ethers } from 'ethers';
 
 export const WalletContext = createContext();
 
+const HARDHAT_NETWORK_ID = '0x7a69'; // 31337
+const HARDHAT_RPC_URL = 'http://127.0.0.1:8545';
+
 export const WalletProvider = ({ children }) => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [userRole, setUserRole] = useState(null); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. CHECK SESSION ON LOAD
+  // 1. ROBUST SESSION RESTORATION
   useEffect(() => {
     const checkSession = async () => {
+      setIsLoading(true);
       try {
         const storedRole = localStorage.getItem('userRole');
         const storedWallet = localStorage.getItem('walletAddress');
 
-        // Only restore session if MetaMask is ACTUALLY still connected/unlocked
-        if (storedRole && storedRole !== 'Admin') {
-            if (window.ethereum) {
-                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                if (accounts.length > 0) {
-                    // If the stored wallet matches the active MetaMask wallet
-                    if (accounts[0].toLowerCase() === storedWallet?.toLowerCase()) {
-                        setUserRole(storedRole);
-                        setCurrentAccount(accounts[0]);
-                    } else {
-                        // User switched accounts in MetaMask extension -> Logout to be safe
-                        localStorage.clear();
-                    }
+        if (storedRole && storedWallet && window.ethereum) {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            // Silent connection check
+            const accounts = await provider.send("eth_accounts", []);
+            
+            if (accounts.length > 0) {
+                // If wallet matches stored session, restore it
+                if (accounts[0].toLowerCase() === storedWallet.toLowerCase()) {
+                    setCurrentAccount(accounts[0]);
+                    setUserRole(storedRole);
                 } else {
-                    localStorage.clear(); // Locked or disconnected
+                    // Mismatch: User changed wallet in background. Clear session.
+                    localStorage.clear();
                 }
+            } else {
+                // Locked or Disconnected
+                localStorage.clear();
             }
-        } else if (storedRole === 'Admin') {
-            setUserRole('Admin');
         }
       } catch (error) {
-        console.error(error);
+        console.error("Session check failed", error);
         localStorage.clear();
       } finally {
         setIsLoading(false);
       }
     };
 
-    if(window.ethereum) {
-        window.ethereum.on('accountsChanged', () => {
-            // Security: If account changes in extension, force logout to prevent role mismatch
-            window.location.href = "/";
-            localStorage.clear();
-        });
-    }
-
     checkSession();
   }, []);
 
-  // 2. CONNECT WALLET (Updated with Force Logic)
+  // 2. LISTEN FOR ACCOUNT CHANGES (Fixes the UX Issue)
+  useEffect(() => {
+    if (window.ethereum) {
+        window.ethereum.on('accountsChanged', () => {
+            // Immediate reload to Landing Page if wallet changes
+            localStorage.clear();
+            window.location.href = "/"; 
+        });
+        window.ethereum.on('chainChanged', () => {
+            window.location.reload();
+        });
+    }
+  }, []);
+
+  // 3. CONNECT WALLET (Strict Mode)
   const connectWallet = async (force = false) => {
     if (!window.ethereum) {
-      alert("Please install MetaMask!");
+      alert("Please install Rabby or MetaMask!");
       return null;
     }
     try {
-      // THIS BLOCK FORCES THE POPUP
       if (force) {
-        await window.ethereum.request({
-            method: "wallet_requestPermissions",
-            params: [{ eth_accounts: {} }]
-        });
+        try {
+            await window.ethereum.request({
+                method: "wallet_requestPermissions",
+                params: [{ eth_accounts: {} }]
+            });
+        } catch (error) {
+            console.error("User cancelled permission request:", error);
+            return null;
+        }
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await provider.send("eth_requestAccounts", []);
-      const address = accounts[0];
       
-      setCurrentAccount(address);
-      return address;
+      if (accounts.length === 0) return null;
+      const address = accounts[0];
+
+      // Switch to Hardhat Local
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: HARDHAT_NETWORK_ID }],
+        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: HARDHAT_NETWORK_ID,
+                  chainName: 'Hardhat Local',
+                  rpcUrls: [HARDHAT_RPC_URL],
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
+                },
+              ],
+            });
+          } catch (addError) { console.error("Failed to add network", addError); }
+        }
+      }
+
+      return address; 
     } catch (error) {
-      console.error("Connection rejected:", error);
+      console.error("Connection Error:", error);
       return null;
     }
   };
 
-  const login = (role, address = null) => {
+  const login = (role, address) => {
     setUserRole(role);
+    setCurrentAccount(address);
     localStorage.setItem('userRole', role);
-    if(address) {
-        setCurrentAccount(address);
-        localStorage.setItem('walletAddress', address);
-    }
+    localStorage.setItem('walletAddress', address);
   };
 
   const logout = () => {

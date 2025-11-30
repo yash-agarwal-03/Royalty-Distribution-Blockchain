@@ -78,6 +78,7 @@ contract MusicRoyaltyMarketplace is Ownable, ReentrancyGuard {
     }
 
     // 2. buySong (Public / Listener)
+    // 2. buySong (Public / Listener) - HYBRID AUTO-PAY
     function buySong(uint256 _songId) external payable nonReentrant {
         require(_songId < songCount, "Song does not exist");
         Song storage song = songs[_songId];
@@ -86,20 +87,32 @@ contract MusicRoyaltyMarketplace is Ownable, ReentrancyGuard {
         require(msg.value >= song.price, "Insufficient ETH sent");
         require(!hasUnlocked[msg.sender][_songId], "You already own this song");
 
-        // --- Split Logic ---
-        uint256 artistShare = (msg.value * song.artistSplit) / 100;
-        uint256 producerShare = msg.value - artistShare;
+        // --- 1. Calculate Platform Fee (10%) ---
+        uint256 platformFee = (msg.value * 5) / 100;
+        uint256 remainder = msg.value - platformFee;
 
-        // --- Update Ledgers (Crucial) ---
-        // 1. Artist
+        // --- 2. Calculate Splits on the REMAINDER ---
+        uint256 artistShare = (remainder * song.artistSplit) / 100;
+        uint256 producerShare = remainder - artistShare;
+
+        // --- 3. PAYMENTS ---
+        
+        // A. ADMIN: AUTOMATIC TRANSFER (Push)
+        // We still track lifetime earnings for the graph, but we send the ETH now.
+        lifetimeEarnings[owner()] += platformFee;
+        
+        (bool adminSuccess, ) = payable(owner()).call{value: platformFee}("");
+        require(adminSuccess, "Admin transfer failed");
+
+        // B. ARTIST & PRODUCER: ACCUMULATE (Pull)
+        // They must withdraw later to save gas for the buyer
         pendingWithdrawals[song.artistWallet] += artistShare;
         lifetimeEarnings[song.artistWallet] += artistShare;
 
-        // 2. Producer
         pendingWithdrawals[song.producerWallet] += producerShare;
         lifetimeEarnings[song.producerWallet] += producerShare;
 
-        // --- Unlock Access ---
+        // --- 4. Unlock Access ---
         hasUnlocked[msg.sender][_songId] = true;
 
         emit SongBought(_songId, msg.sender, msg.value);
