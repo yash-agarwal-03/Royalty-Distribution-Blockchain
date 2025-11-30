@@ -1,6 +1,6 @@
 export const platformFeePercentage=0.05;
 // 1. Paste the address you just copied from the terminal
-export const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+export const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 // 2. Go to: royalty-backend/artifacts/contracts/MusicRoyaltyMarketplace.sol/MusicRoyaltyMarketplace.json
 // Copy the entire "abi": [...] array and paste it below.
 export const CONTRACT_ABI = [
