@@ -5,7 +5,14 @@ import { WalletContext } from '../context/WalletContext';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { userRole, isLoading } = useContext(WalletContext);
 
-  if (isLoading) return <div className="text-white text-center mt-5">Loading Session...</div>;
+  // In ProtectedRoute.jsx
+if (isLoading) {
+    return (
+        <div className="d-flex justify-content-center align-items-center vh-100 bg-dark">
+            <div className="spinner-border text-info" role="status"></div>
+        </div>
+    );
+}
 
   // 1. If not logged in at all -> Kick to Landing
   if (!userRole) {
